@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAFI IPTV - Premium Live TV</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <style>
+        :root {
+            --primary: #E50914;
+            --primary-glow: rgba(229, 9, 20, 0.5);
+            --bg-main: #050505;
+            --bg-panel: rgba(20, 20, 25, 0.95);
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --border: #2a2a35;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Mobile Top Header --- */
+        .mobile-header {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: #0a0a0f;
+            border-bottom: 1px solid var(--border);
+            z-index: 1001;
+        }
+
+        .mobile-header h2 {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+        .mobile-header h2 span { color: var(--primary); }
+        
+        .menu-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 26px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* --- Sidebar Design --- */
+        .sidebar {
+            width: 380px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            z-index: 1000;
+            transition: 0.3s ease-in-out;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.5);
+        }
+
+        /* BIG BRANDING */
+        .brand-header {
+            padding: 35px 20px 25px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(229,9,20,0.1) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand-header h1 {
+            font-size: 42px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px var(--primary-glow);
+            line-height: 1.1;
+        }
+
+        .brand-header h1 span { color: var(--primary); }
+        .brand-header p {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 8px;
+            font-weight: 400;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .search-container {
+            padding: 20px;
+            background: transparent;
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 14px 20px 14px 45px;
+            border: 1px solid #333;
+            border-radius: 50px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.3);
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        /* --- Channel List --- */
+        .channel-list {
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 10px 15px;
+        }
+
+        .channel-list li {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .channel-list li:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            transform: translateX(5px);
+        }
+
+        .channel-list li.active {
+            background: linear-gradient(90deg, rgba(229,9,20,0.15) 0%, transparent 100%);
+            border-left: 5px solid var(--primary);
+            border-radius: 4px 12px 12px 4px;
+        }
+
+        .channel-logo {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            margin-right: 15px;
+            object-fit: cover;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            background-color: #111;
+        }
+
+        .channel-info { flex-grow: 1; overflow: hidden; }
+
+        .channel-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .playing-status {
+            font-size: 11px;
+            color: var(--primary);
+            font-weight: 600;
+            display: none;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+
+        .channel-list li.active .playing-status { display: block; }
+
+        /* --- Main Content & Player --- */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at center, #181822 0%, #050505 100%);
+        }
+
+        .top-header {
+            padding: 25px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .now-playing-title {
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .live-badge {
+            background-color: var(--primary);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .player-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 40px 40px 40px;
+        }
+
+        video {
+            width: 100%;
+            max-width: 1200px;
+            aspect-ratio: 16/9;
+            border-radius: 16px;
+            background-color: #000;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05);
+            outline: none;
+        }
+
+        /* --- Scrollbar Customization --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        /* --- Mobile Responsive Design --- */
+        @media (max-width: 992px) {
+            body { flex-direction: column; }
+            .mobile-header { display: flex; }
+            
+            .sidebar {
+                position: fixed;
+                top: 66px; /* Height of mobile header */
+                left: -100%;
+                width: 100%;
+                height: calc(100vh - 66px);
+                border-right: none;
+            }
+            .sidebar.active { left: 0; }
+            
+            .brand-header { display: none; } /* Hide big logo in sidebar on mobile */
+            
+            .main-content { height: calc(100vh - 66px); }
+            .top-header { padding: 15px 20px; }
+            .now-playing-title { font-size: 16px; }
+            .player-container { padding: 0 15px 20px 15px; align-items: flex-start; }
+            video { border-radius: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-header">
+        <h2>KAFI <span>IPTV</span></h2>
+        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="brand-header">
+            <h1>KAFI <span>IPTV</span></h1>
+            <p id="total-channels">Fetching Channels...</p>
+        </div>
+        
+        <div class="search-container">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Search Channels..." onkeyup="filterChannels()">
+            </div>
+        </div>
+        <ul class="channel-list" id="channel-list"></ul>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <div class="now-playing-title">
+                <span class="live-badge">LIVE</span>
+                <span id="channel-title">Select a channel to watch</span>
+            </div>
+        </div>
+        <div class="player-container">
+            <video id="video-player" controls autoplay></video>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Sidebar for Mobile
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        // 1. Local Object Data
+        const iptvData = {
+          "info": {
+            "owner": "YASIR ARAFAT KAFI",
+            "Team": "KIP",
+            "generated_by": "KAFI IPTV",
+            "total_channels": 42
+          },
+          "channels": [
+            {"name": "Deshi TV (720p)", "url": "https://deshitv.deshitv24.net/live/myStream/playlist.m3u8"},
+            {"name": "Boishakhi TV", "url": "https://boishakhi.sonarbanglatv.com/boishakhi/boishakhitv/index.m3u8"},
+            {"name": "Desh TV (1080p)", "url": "https://bozztv.com/rongo/rongo-DeshTV/index.m3u8"},
+            {"name": "Green TV (1080p)", "url": "https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI2/greentv.stream/live-orgin/greentv.stream/playlist.m3u8"},
+            {"name": "BTV Chattogram (480p)", "url": "https://tvsen6.aynaott.com/btvctg/index.m3u8"},
+            {"name": "Channel I (720p)", "url": "https://tvsen6.aynaott.com/channeli/index.m3u8"},
+            {"name": "Duronto TV (720p)", "url": "https://tvsen5.aynaott.com/durontotv/index.m3u8"},
+            {"name": "Bijoy TV (720p)", "url": "https://tvsen6.aynaott.com/bijoytv/index.m3u8"},
+            {"name": "Ananda TV (720p)", "url": "https://tvsen6.aynaott.com/anandatv/index.m3u8"},
+            {"name": "BTV National (720p)", "url": "https://tvsen6.aynaott.com/btvhd/index.m3u8"},
+            {"name": "BTV News (720p)", "url": "https://tvsen6.aynaott.com/BTVNews/index.m3u8"},
+            {"name": "BTV World (720p)", "url": "https://tvsen6.aynaott.com/btv_world/index.m3u8"},
+            {"name": "Ekattor TV (720p)", "url": "https://tvsen6.aynaott.com/ekattorbdtv/index.m3u8"},
+            {"name": "Ekhon TV (720p)", "url": "https://tvsen6.aynaott.com/ekhontv/index.m3u8"},
+            {"name": "DBC News (720p)", "url": "https://tvsen6.aynaott.com/dbcnews/index.m3u8"},
+            {"name": "Ekushey TV (720p)", "url": "https://tvsen6.aynaott.com/etv/index.m3u8"},
+            {"name": "Global TV (720p)", "url": "https://tvsen6.aynaott.com/globaltvhd/index.m3u8"},
+            {"name": "Independent TV (480p)", "url": "https://tvsen6.aynaott.com/independenttv/index.m3u8"},
+            {"name": "Maasranga TV (720p)", "url": "https://tvsen5.aynaott.com/maasrangatv/index.m3u8"},
+            {"name": "RTV (720p)", "url": "https://tvsen5.aynaott.com/RtvHD/index.m3u8"},
+            {"name": "NTV (720p)", "url": "https://tvsen5.aynaott.com/xV4jEKf3D9zc/index.m3u8"},
+            {"name": "Mohona TV (720p)", "url": "https://tvsen6.aynaott.com/mohonatv/index.m3u8"},
+            {"name": "SA TV (720p)", "url": "https://tvsen6.aynaott.com/satv/index.m3u8"},
+            {"name": "Jamuna TV (480p)", "url": "https://tvsen6.aynaott.com/jamunatv/index.m3u8"},
+            {"name": "Ekushey TV (480p)", "url": "https://ekusheyserver.com/etvlivesn.m3u8"},
+            {"name": "Somoy News TV (720p)", "url": "https://tvsen6.aynaott.com/somoytv/index.m3u8"},
+            {"name": "News 24 (720p)", "url": "https://tvsen6.aynaott.com/news24/index.m3u8"},
+            {"name": "Desh TV (720p)", "url": "https://tvsen6.aynaott.com/deshtv/index.m3u8"},
+            {"name": "Independent TV (1080p)", "url": "https://owrcovcrpy.gpcdn.net/bpk-tv/1704/output/1704.m3u8"},
+            {"name": "TUDN 1", "url": "https://tv.topmediatv.net:25463/live/TopMediaWeb/bOteTR8ED1/128.m3u8"},
+            {"name": "TUDN 2", "url": "https://tv.topmediatv.net:25463/live/TopMediaWeb/bOteTR8ED1/791.m3u8"},
+            {"name": "PTV Sports HD", "url": "https://tvsen5.aynaott.com/PtvSports/tracks-v1a1/mono.ts.m3u8"},
+            {"name": "WAZ TV", "url": "https://tplay.live/originals/ilm-tv/index.m3u8"},
+            {"name": "T Sports HD", "url": "http://103.179.25.147:8181/T-SPORTS/tracks-v1a1/mono.m3u8"},
+            {"name": "Channel 1 News HD", "url": "https://app24.jagobd.com.bd/c3VydmVyX8RpbEU9Mi8xNy8yMFDEEHGcfRgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcEdsEfeDeKiNkVN3PTOmdFseWRtaW51aiPhnPTI2/channel1bd.stream/tracks-v1a1/mono.m3u8"},
+            {"name": "T Sports HD (Alt)", "url": "http://103.151.61.12/T-Sports.kutta/video.m3u8"},
+            {"name": "PTV Sports", "url": "https://tvsen5.aynaott.com/PtvSports/index.m3u8"},
+            {"name": "G Series Drama", "url": "https://vods2.aynaott.com/gseriesDrama/tracks-v1a1/mono.ts.m3u8"},
+            {"name": "Live Quran TV", "url": "https://live.kwikmotion.com/sharjahtvquranlive/shqurantv.smil/playlist.m3u8"},
+            {"name": "Somoy FIFA World Cup 2026", "url": "https://owrcovcrpy.gpcdn.net/bpk-tv/1702/output/1702-audio_113322_eng=113200-video=2202800.m3u8"},
+            {"name": "FM Radio", "url": "https://stream.spicefmbd.com/stream.m3u8"},
+            {"name": "Motor Vision", "url": "https://mvg-mv-xumo.otteravision.com/mvg/mv/mv.m3u8"}
+          ]
+        };
+
+        // 2. Raw M3U Data
+        const rawM3uData = `
+#EXTINF:-1 tvg-name="FC Barcelona TV Ⓖ" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_%28crest%29.svg/1200px-FC_Barcelona_%28crest%29.svg.png" group-title="Sports",FC Barcelona TV Ⓖ
+https://play-barcatv.akamaized.net/hls/live/2020286/barcatv/master.m3u8
+#EXTINF:-1 tvg-name="LaLiga TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/LaLiga_logo_2023.svg/1200px-LaLiga_logo_2023.svg.png" group-title="Sports",LaLiga TV
+https://laligatv-live.mds.yandex.net/hls/laliga.m3u8
+#EXTINF:-1 tvg-name="beIN SPORTS 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/BeIN_SPORTS_logo.svg/1200px-BeIN_SPORTS_logo.svg.png" group-title="Sports",beIN SPORTS 1
+https://bein-sports.akamaized.net/live/bein1/master.m3u8
+#EXTINF:-1 tvg-name="beIN SPORTS 2" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/BeIN_SPORTS_logo.svg/1200px-BeIN_SPORTS_logo.svg.png" group-title="Sports",beIN SPORTS 2
+https://bein-sports.akamaized.net/live/bein2/master.m3u8
+#EXTINF:-1 tvg-name="Sky Sports Premier League" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Sky_Sports_Premier_League.svg/1200px-Sky_Sports_Premier_League.svg.png" group-title="Sports",Sky Sports Premier League
+https://skysports.akamaized.net/hls/premierleague.m3u8
+#EXTINF:-1 tvg-name="Sky Sports Football" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/c/cd/Sky_Sports_Football.svg/1200px-Sky_Sports_Football.svg.png" group-title="Sports",Sky Sports Football
+https://skysports.akamaized.net/hls/football.m3u8
+#EXTINF:-1 tvg-name="Sony Ten 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Sony_Ten_1_Logo.png/1200px-Sony_Ten_1_Logo.png" group-title="Sports",Sony Ten 1
+https://sonyten1-live.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Sony Ten 2" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Sony_Ten_2_Logo.png/1200px-Sony_Ten_2_Logo.png" group-title="Sports",Sony Ten 2
+https://sonyten2-live.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Star Sports 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Star_Sports_logo.svg/1200px-Star_Sports_logo.svg.png" group-title="Sports",Star Sports 1
+https://starsports.akamaized.net/live/ss1.m3u8
+#EXTINF:-1 tvg-name="SuperSport Premier League" tvg-logo="https://upload.wikimedia.org/wikipedia/en/c/cb/SuperSport_logo.png" group-title="Sports",SuperSport Premier League
+https://supersport-live.akamaized.net/hls/sspl.m3u8
+#EXTINF:-1 tvg-name="SuperSport LaLiga" tvg-logo="https://upload.wikimedia.org/wikipedia/en/c/cb/SuperSport_logo.png" group-title="Sports",SuperSport LaLiga
+https://supersport-live.akamaized.net/hls/sslaliga.m3u8
+#EXTINF:-1 tvg-name="SuperSport Football" tvg-logo="https://upload.wikimedia.org/wikipedia/en/c/cb/SuperSport_logo.png" group-title="Sports",SuperSport Football
+https://supersport-live.akamaized.net/hls/ssfootball.m3u8
+#EXTINF:-1 tvg-name="BT Sport 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/BT_Sport_Logo.svg/1200px-BT_Sport_Logo.svg.png" group-title="Sports",BT Sport 1
+https://btsport.akamaized.net/hls/bt1.m3u8
+#EXTINF:-1 tvg-name="Eurosport 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Eurosport_logo_2015.svg/1200px-Eurosport_logo_2015.svg.png" group-title="Sports",Eurosport 1
+https://eurosport.akamaized.net/hls/euro1.m3u8
+#EXTINF:-1 tvg-name="Eurosport 2" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Eurosport_logo_2015.svg/1200px-Eurosport_logo_2015.svg.png" group-title="Sports",Eurosport 2
+https://eurosport.akamaized.net/hls/euro2.m3u8
+#EXTINF:-1 tvg-name="Astro SuperSport" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/c/ca/Astro_SuperSport_Logo.svg/1200px-Astro_SuperSport_Logo.svg.png" group-title="Sports",Astro SuperSport
+https://astro-supersport.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Fox Sports" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Fox_Sports_logo.svg/1200px-Fox_Sports_logo.svg.png" group-title="Sports",Fox Sports
+https://foxsports.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="ESPN" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/ESPN_logo.svg/1200px-ESPN_logo.svg.png" group-title="Sports",ESPN
+https://espn.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="AD Sports 1" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/6/69/AD_Sports_Logo.svg/1200px-AD_Sports_Logo.svg.png" group-title="Sports",AD Sports 1
+https://adsports.akamaized.net/hls/ads1.m3u8
+#EXTINF:-1 tvg-name="AD Sports 2" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/6/69/AD_Sports_Logo.svg/1200px-AD_Sports_Logo.svg.png" group-title="Sports",AD Sports 2
+https://adsports.akamaized.net/hls/ads2.m3u8
+#EXTINF:-1 tvg-name="Dubai Sports" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/7/7b/Dubai_Sports_Logo.png/1200px-Dubai_Sports_Logo.png" group-title="Sports",Dubai Sports
+https://dubaisports.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Alkass One" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Al_Kass_Sports_Channels_logo.svg/1200px-Al_Kass_Sports_Channels_logo.svg.png" group-title="Sports",Alkass One
+https://alkass.akamaized.net/hls/one.m3u8
+#EXTINF:-1 tvg-name="Alkass Two" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Al_Kass_Sports_Channels_logo.svg/1200px-Al_Kass_Sports_Channels_logo.svg.png" group-title="Sports",Alkass Two
+https://alkass.akamaized.net/hls/two.m3u8
+#EXTINF:-1 tvg-name="KSA Sports 1" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/b/b3/KSA_Sports_logo.svg/1200px-KSA_Sports_logo.svg.png" group-title="Sports",KSA Sports 1
+https://ksasports.akamaized.net/hls/ksa1.m3u8
+#EXTINF:-1 tvg-name="KSA Sports 2" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/b/b3/KSA_Sports_logo.svg/1200px-KSA_Sports_logo.svg.png" group-title="Sports",KSA Sports 2
+https://ksasports.akamaized.net/hls/ksa2.m3u8
+#EXTINF:-1 tvg-name="Real Madrid TV" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Real_Madrid_CF.svg/1200px-Real_Madrid_CF.svg.png" group-title="Sports",Real Madrid TV
+https://rmtv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="MUTV" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/1200px-Manchester_United_FC_crest.svg.png" group-title="Sports",MUTV
+https://mutv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Chelsea TV" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/1200px-Chelsea_FC.svg.png" group-title="Sports",Chelsea TV
+https://chelseatv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Liverpool FC TV" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/1200px-Liverpool_FC.svg.png" group-title="Sports",Liverpool FC TV
+https://lfctv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Arsenal TV" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/1200px-Arsenal_FC.svg.png" group-title="Sports",Arsenal TV
+https://arsenaltv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Bayern TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/1200px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png" group-title="Sports",Bayern TV
+https://bayerntv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Juventus TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Juventus_FC_2017_icon_%28black%29.svg/1200px-Juventus_FC_2017_icon_%28black%29.svg.png" group-title="Sports",Juventus TV
+https://juventustv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="Willow TV" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/7/7b/Willow_TV_logo.svg/1200px-Willow_TV_logo.svg.png" group-title="Sports",Willow TV
+https://willowtv.akamaized.net/hls/master.m3u8
+#EXTINF:-1 tvg-name="ORF Sport + Ⓖ" tvg-logo="https://i.imgur.com/MVNZ4gf.png" tvg-id="ORFSportPlus.at" tvg-chno="4" tvg-country="AT" group-title="Sports",ORF Sport + Ⓖ
+https://orfs.mdn.ors.at/out/u/orfs/q8c/manifest.m3u8
+#EXTINF:-1 tvg-name="DeporTV" tvg-logo="https://i.imgur.com/iyYLNRt.png" tvg-id="DeporTV.ar" tvg-chno="24.1" tvg-country="AR" group-title="Sports",DeporTV
+https://5fb24b460df87.streamlock.net/live-cont.ar/deportv/playlist.m3u8
+#EXTINF:-1 tvg-name="CBC Sport Ⓖ" tvg-logo="https://upload.wikimedia.org/wikipedia/az/0/04/CBC_Sport_TV_loqo.png" tvg-id="CBCSport.az" tvg-country="AZ" group-title="Sports",CBC Sport Ⓖ
+https://mn-nl.mncdn.com/cbcsports_live/cbcsports/playlist.m3u8
+#EXTINF:-1 tvg-name="Sportska televizija Ⓖ" tvg-logo="https://i.imgur.com/xdxjcVh.png" tvg-id="SportskaTV.hr" tvg-chno="11" tvg-country="HR" group-title="Sports",Sportska televizija Ⓖ
+https://stream.agatin.hr:3087/live/sptvlive.m3u8
+#EXTINF:-1 tvg-name="Deportes13 Ⓖ" tvg-logo="https://i.imgur.com/GRpxoPf.png" tvg-id="D13.cl" tvg-chno="19" tvg-country="CL" group-title="Sports",Deportes13 Ⓖ
+https://redirector.rudo.video/hls-video/ey6283je82983je9823je8jowowiekldk9838274/13d/13d.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="ČT sport Ⓖ" tvg-logo="https://i.imgur.com/I2dltZW.png" tvg-id="CTSport.cz" tvg-chno="4" tvg-country="CZ" group-title="Sports",ČT sport Ⓖ
+https://sktv.plainrock127.xyz/get.php?x=CTsport
+#EXTINF:-1 tvg-name="ČT sport Plus Ⓖ" tvg-logo="https://i.imgur.com/5JiMynW.png" tvg-id="" tvg-chno="7" tvg-country="CZ" group-title="Sports",ČT sport Plus Ⓖ
+https://sktv.plainrock127.xyz/get.php?x=CTsportPlus
+#EXTINF:-1 tvg-name="L'Équipe ⒹⒼ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/L%27%C3%89quipe_wordmark.svg/640px-L%27%C3%89quipe_wordmark.svg.png" tvg-id="LEquipe.fr" tvg-chno="21" tvg-country="FR" group-title="Sports",L'Équipe ⒹⒼ
+https://www.dailymotion.com/video/x2lefik
+#EXTINF:-1 tvg-name="CCTV-5 体育" tvg-logo="https://i.imgur.com/Mut2omN.png" tvg-id="CCTV5.cn" tvg-chno="7" tvg-country="CN" group-title="Sports",CCTV-5 体育
+https://node1.olelive.com:6443/live/CCTV5HD/hls.m3u8
+#EXTINF:-1 tvg-name="CCTV-5+ 体育赛事" tvg-logo="https://i.imgur.com/UNjmQVS.png" tvg-id="CCTV5Plus.cn" tvg-chno="8" tvg-country="CN" group-title="Sports",CCTV-5+ 体育赛事
+https://node1.olelive.com:6443/live/CCTV5PHD/hls.m3u8
+#EXTINF:-1 tvg-name="Racing.com" tvg-logo="https://i.imgur.com/pma0OCf.png" tvg-id="Racingcom.au" tvg-chno="5" tvg-country="AU" group-title="Sports",Racing.com
+https://racingvic-i.akamaized.net/hls/live/598695/racingvic/1500.m3u8
+#EXTINF:-1 tvg-name="Kanali 7 Ⓢ" tvg-logo="https://i.imgur.com/rL2v9pM.png" tvg-id="Kanali7.al" tvg-country="AL" group-title="Albania",Kanali 7 Ⓢ
+https://fe.tring.al/delta/105/out/u/1200_1.m3u8
+#EXTINF:-1 tvg-name="A2 CNN Albania" tvg-logo="https://i.imgur.com/TgO3Lzi.png" tvg-id="A2CNN.al" tvg-country="AL" group-title="Albania",A2 CNN Albania
+https://tv.a2news.com/live/smil:a2cnnweb.stream.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="ABC News Albania Ⓣ" tvg-logo="https://i.imgur.com/aObcudw.png" tvg-id="ABCNewsAlbania.al" tvg-country="AL" group-title="Albania",ABC News Albania Ⓣ
+https://www.twitch.tv/abcnewsal
+#EXTINF:-1 tvg-name="AlbKanale Music TV Ⓢ" tvg-logo="https://i.imgur.com/JdKxscs.png" tvg-id="AlbKanaleMusicTV.al" tvg-country="AL" group-title="Albania",AlbKanale Music TV Ⓢ
+https://albportal.net/albkanalemusic.m3u8
+#EXTINF:-1 tvg-name="Alpo TV" tvg-logo="https://i.imgur.com/Pr4ixiA.png" tvg-id="AlpoTV.al" tvg-country="AL" group-title="Albania",Alpo TV
+https://5d00db0e0fcd5.streamlock.net/7236/7236/playlist.m3u8
+#EXTINF:-1 tvg-name="CNA" tvg-logo="https://i.imgur.com/X3ukD5t.png" tvg-id="CNA.al" tvg-country="AL" group-title="Albania",CNA
+https://live1.mediadesk.al/cnatvlive.m3u8
+#EXTINF:-1 tvg-name="Euronews Albania Ⓨ" tvg-logo="https://i.imgur.com/Skf6vdi.png" tvg-id="EuronewsAlbania.al" tvg-country="AL" group-title="Albania",Euronews Albania Ⓨ
+https://www.youtube.com/@EuronewsAlbania/live
+#EXTINF:-1 tvg-name="News 24 Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/News_24_%28Albania%29.svg/1024px-News_24_%28Albania%29.svg.png" tvg-id="News24.al" tvg-country="AL" group-title="Albania",News 24 Ⓢ
+https://tv.balkanweb.com/news24/livestream/playlist.m3u8
+#EXTINF:-1 tvg-name="Ora News" tvg-logo="https://i.imgur.com/ILZY5bJ.png" tvg-id="OraNews.al" tvg-country="AL" group-title="Albania",Ora News
+https://live1.mediadesk.al/oranews.m3u8
+#EXTINF:-1 tvg-name="Panorama TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Panorama_logo.svg/512px-Panorama_logo.svg.png" tvg-id="PanoramaTV.al" tvg-country="AL" group-title="Albania",Panorama TV Ⓢ
+http://198.244.188.94/panorama/livestream/playlist.m3u8
+#EXTINF:-1 tvg-name="Report TV" tvg-logo="https://i.imgur.com/yuRDJYY.png" tvg-id="ReportTV.al" tvg-country="AL" group-title="Albania",Report TV
+https://deb10stream.duckdns.org/hls/stream.m3u8
+#EXTINF:-1 tvg-name="Syri" tvg-logo="https://i.imgur.com/4zVyj1M.png" tvg-id="Syri.al" tvg-country="AL" group-title="Albania",Syri
+https://stream.syritv.al/SyriTV/index.m3u8
+#EXTINF:-1 tvg-name="Top News Ⓣ" tvg-logo="https://i.imgur.com/tBAXkOW.png" tvg-id="TopNews.al" tvg-country="AL" group-title="Albania",Top News Ⓣ
+https://www.twitch.tv/topnewsal
+#EXTINF:-1 tvg-name="Tropoja" tvg-logo="https://i.imgur.com/D3hNOVS.png" tvg-id="TropojaTelevizion.al" tvg-country="AL" group-title="Albania",Tropoja
+https://live.prostream.al/al/smil:tropojatv.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="TV 7 Albania" tvg-logo="https://i.imgur.com/k9WqPLZ.png" tvg-id="TV7Albania.al" tvg-country="AL" group-title="Albania",TV 7 Albania
+https://5d00db0e0fcd5.streamlock.net/7064/7064/playlist.m3u8
+#EXTINF:-1 tvg-name="TV Apollon Ⓢ" tvg-logo="https://i.imgur.com/gUz2AjM.png" tvg-id="TVApollon.al" tvg-country="AL" group-title="Albania",TV Apollon Ⓢ
+https://live.apollon.tv/Apollon-WEB/video.m3u8?token=tnt3u76re30d2
+#EXTINF:-1 tvg-name="Vizion Plus" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Vizion_Plus.svg/512px-Vizion_Plus.svg.png" tvg-id="VizionPlus.al" tvg-country="AL" group-title="Albania",Vizion Plus
+https://fe.tring.al/delta/105/out/u/rdghfhsfhfshs.m3u8
+#EXTINF:-1 tvg-name="Andorra TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/3/32/Logo_Andorra_Televisi%C3%B3.png" tvg-id="AndorraTV.ad" tvg-chno="1" tvg-country="AD" group-title="Andorra",Andorra TV
+https://videos.rtva.ad/live/rtva/playlist.m3u8
+#EXTINF:-1 tvg-name="TN Todo Noticias Ⓨ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/TN_todo_noticias_logo.svg/200px-TN_todo_noticias_logo.svg.png" tvg-id="TodoNoticias.ar" tvg-chno="3" tvg-country="AR" group-title="Argentina",TN Todo Noticias Ⓨ
+https://www.youtube.com/c/todonoticias/live
+#EXTINF:-1 tvg-name="Encuentro Ⓨ Ⓖ" tvg-logo="https://i.imgur.com/IyP2UIx.png" tvg-id="Encuentro.ar" tvg-chno="22.1" tvg-country="AR" group-title="Argentina",Encuentro Ⓨ Ⓖ
+https://www.youtube.com/user/encuentro/live
+#EXTINF:-1 tvg-name="Pakapaka Ⓨ Ⓖ" tvg-logo="https://i.imgur.com/Q4zaCuM.png" tvg-id="Pakapaka.ar" tvg-chno="22.2" tvg-country="AR" group-title="Argentina",Pakapaka Ⓨ Ⓖ
+https://www.youtube.com/user/CanalPakapaka/live
+#EXTINF:-1 tvg-name="Aunar" tvg-logo="http://tvabierta.weebly.com/uploads/5/1/3/4/51344345/aunar.png" tvg-id="Aunar.ar" tvg-chno="22.3" tvg-country="AR" group-title="Argentina",Aunar
+https://5fb24b460df87.streamlock.net/live-cont.ar/mirador/playlist.m3u8
+#EXTINF:-1 tvg-name="Cine.AR" tvg-logo="https://i.imgur.com/RPLyrIC.png" tvg-id="CineAr.ar" tvg-chno="22.4" tvg-country="AR" group-title="Argentina",Cine.AR
+https://5fb24b460df87.streamlock.net/live-cont.ar/cinear/playlist.m3u8
+#EXTINF:-1 tvg-name="Tec TV" tvg-logo="https://i.imgur.com/EGCq1wc.png" tvg-id="TECTV.ar" tvg-chno="22.5" tvg-country="AR" group-title="Argentina",Tec TV
+https://tv.initium.net.ar:3939/live/tectvmainlive.m3u8
+#EXTINF:-1 tvg-name="Televisión Pública Ⓨ" tvg-logo="https://i.imgur.com/4hYYpiu.png" tvg-id="TVPublica.ar" tvg-chno="23.1" tvg-country="AR" group-title="Argentina",Televisión Pública Ⓨ
+https://www.youtube.com/user/TVPublicaArgentina/live
+#EXTINF:-1 tvg-name="Canal 26 Ⓨ" tvg-logo="https://i.imgur.com/xDjOUuz.png" tvg-id="Canal26.ar" tvg-chno="24.2" tvg-country="AR" group-title="Argentina",Canal 26 Ⓨ
+https://www.youtube.com/c/canal26/live
+#EXTINF:-1 tvg-name="Crónica TV Ⓨ" tvg-logo="https://i.imgur.com/k2Ku8Ib.png" tvg-id="CronicaTV.ar" tvg-chno="24.4" tvg-country="AR" group-title="Argentina",Crónica TV Ⓨ
+https://www.youtube.com/c/cronicatv/live
+#EXTINF:-1 tvg-name="IP Noticias Ⓨ" tvg-logo="https://photos.live-tv-channels.org/tv-logo/ar-ip-noticias-6980-300x225.jpg" tvg-id="IPNoticias.ar" tvg-chno="24.5" tvg-country="AR" group-title="Argentina",IP Noticias Ⓨ
+https://www.youtube.com/watch?v=IxQ2-6Y4y9w
+#EXTINF:-1 tvg-name="El Destape Ⓨ" tvg-logo="https://yt3.ggpht.com/a-/AAuE7mAuXDwiY8UPwtAHrGXTXkAxBjdRqws2MJIN2A=s900-mo-c-c0xffffffff-rj-k-no" tvg-id="ElDestape.ar" tvg-chno="24.6" tvg-country="AR" group-title="Argentina",El Destape Ⓨ
+https://www.youtube.com/watch?v=JuskTxbUqmY
+#EXTINF:-1 tvg-name="C5N Ⓨ" tvg-logo="https://i.imgur.com/E3pamA5.png" tvg-id="C5N.ar" tvg-chno="25.2" tvg-country="AR" group-title="Argentina",C5N Ⓨ
+https://www.youtube.com/c/c5n/live
+#EXTINF:-1 tvg-name="LN+ Ⓨ" tvg-logo="https://i.imgur.com/vJYzGt1.png" tvg-id="LaNacionPlus.ar" tvg-chno="25.3" tvg-country="AR" group-title="Argentina",LN+ Ⓨ
+https://www.youtube.com/c/LaNacionMas/live
+#EXTINF:-1 tvg-name="Canal E" tvg-logo="https://i.ibb.co/y4pkxH3/Qtc8-M2-PG-400x400.jpg" tvg-id="CanalE.ar" tvg-chno="25.6" tvg-country="AR" group-title="Argentina",Canal E
+https://unlimited1-us.dps.live/perfiltv/perfiltv.smil/perfiltv/livestream2/chunks.m3u8
+#EXTINF:-1 tvg-name="Telemax" tvg-logo="https://i.imgur.com/gfX0hdB.png" tvg-id="Telemax.ar" tvg-chno="26.3" tvg-country="AR" group-title="Argentina",Telemax
+https://live-edge01.telecentro.net.ar/live/smil:tlx.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="Net TV" tvg-logo="https://i.imgur.com/EWmshtx.png" tvg-id="NETTV.ar" tvg-chno="27.2" tvg-country="AR" group-title="Argentina",Net TV
+https://unlimited1-us.dps.live/nettv/nettv.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="TV Universidad" tvg-logo="https://i.imgur.com/tvLHiAT.png" tvg-id="TVUniversidad.ar" tvg-chno="32.1" tvg-country="AR" group-title="Argentina",TV Universidad
+https://stratus.stream.cespi.unlp.edu.ar/hls/tvunlp.m3u8
+#EXTINF:-1 tvg-name="Urbana Tevé" tvg-logo="https://yt3.ggpht.com/ytc/AKedOLQLeFMWMeoumi-o24ohLPXSEdNL5-oJ9W5oP5KnnA=s900-c-k-c0x00ffffff-no-rj" tvg-id="UrbanaTeve.ar" tvg-chno="32.2" tvg-country="AR" group-title="Argentina",Urbana Tevé
+https://cdnhd.iblups.com/hls/DD3nXkAkWk.m3u8
+#EXTINF:-1 tvg-name="Comarca TV" tvg-logo="http://directostv.teleame.com/wp-content/uploads/2020/10/Comarca-TV-en-vivo-Online.png" tvg-id="ComarcaTV.ar" tvg-chno="32.3" tvg-country="AR" group-title="Argentina",Comarca TV
+https://video-weaver.ord56.hls.ttvnw.net/v1/playlist/Cq4FFLOPxq44Qy0kxjcr_wXuRRwjKU6gJ80Tc5eWRkaz5XdeNfeq7DzoNAstinu7BLtnw7jYDANX5yCDozdlS55_kYfuDyqQhwF0JpzU75lDUv5NOuUVWBwlP0m1Bh1JMn21v_OvA_teSCI7hcIFl2DoINrr8bHnpSS8EUvXNesfdX_LcfQH-clqftQ0sCreLIbTvxI5MyL6Wnm8jGh2yg48A2c_k9YHDH6TpM3tLo-pbRrrfByqMq-IoMQREf5DV_sTfHtAzinQQU3Np309s2ScJwcBlAjzz4VJ7svuJ1UbWBBylenSTnrXQW5Vws7OqG2kcoAHHpAQN6BQCpxaXO6dE7MLg7Nq6E7961fHEVSqFCRQg2Y5orbSsEwMo7_S4s5POZSQX1tn04QDuHfLixx-aBcbctSSFmI1CNZ3YDCEZVvWHOU6SyKQcsZeJCFLA1DsxqY3DeAn6n7xpPS4pdsizKqlqsT66liv_L-48h7jGujNZPDHge0fcgUs_7b7jlKJlKv-S_s1mGgLqPEUEQ8dhn5AugB0kfjAGgcTHIP_qLPRY0M7OikuBaMxh1pUpPkVG9AX4jCg1cwCgcfa64OP9ed4pwMjoiKm0dIfytTQ8hWjwXtkv16nJDfZ3kkqaMnM8ErZG6tRw-JVy3nRooKubY7Re0Fc1RHB85_eX2NYQD88N7r-UgaiO2ax0FQ-E_IdfuwSmp5oDy6Di6pT7r_zDRN3znbV64s4i-INUg-D2Leeq4xqYhe_Zhj-3AoxXDWCB0-DCc1kFEComkNpY01YA19zEm01TKLCbdaJwdC6bQpSEoJkOCoPAMnxm7oPNlqZRbhM4TVCJ34f4Y1guzaDomcEABl4Cii2UF-OhskRUZF-SUWjWdO6z62UqZagzG2QOTr6VBH-ItT_16fLsRUaDGTVKzgYHT8XcSqTkyABKgl1cy1lYXN0LTEwjQY.m3u8
+#EXTINF:-1 tvg-name="El Trece" tvg-logo="https://i.imgur.com/ZK7AQFg.png" tvg-id="ElTrece.ar" tvg-chno="33.1" tvg-country="AR" group-title="Argentina",El Trece
+https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8
+#EXTINF:-1 tvg-name="El Nueve" tvg-logo="https://i.imgur.com/EtcVSm4.png" tvg-id="ElNueve.ar" tvg-chno="35.1" tvg-country="AR" group-title="Argentina",El Nueve
+https://octubre-live.cdn.vustreams.com/live/channel09/live.isml/live.m3u8
+#EXTINF:-1 tvg-name="Telefe Ⓨ" tvg-logo="https://i.imgur.com/wrZfMXn.png" tvg-id="Telefe.ar" tvg-chno="34.1" tvg-country="AR" group-title="Argentina",Telefe Ⓨ
+https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8
+#EXTINF:-1 tvg-name="América Ⓨ" tvg-logo="https://i.imgur.com/Jt7dOQm.png" tvg-id="AmericaTV.ar" tvg-chno="36.1" tvg-country="AR" group-title="Argentina",América Ⓨ
+https://www.youtube.com/c/americaenvivo/live
+#EXTINF:-1 tvg-name="A24 Ⓨ" tvg-logo="https://i.imgur.com/OdhF7ym.png" tvg-id="A24.ar" tvg-chno="36.2" tvg-country="AR" group-title="Argentina",A24 Ⓨ
+https://www.youtube.com/c/A24com/live
+#EXTINF:-1 tvg-name="Armenia 1" tvg-logo="https://i.imgur.com/HIwJ4lc.png" tvg-id="Armenia1.am" tvg-chno="#" tvg-country="AM" group-title="Armenia",Armenia 1
+https://amtv1.livestreamingcdn.com/am2abr/index.m3u8
+#EXTINF:-1 tvg-name="Kentron TV Ⓢ" tvg-logo="https://i.imgur.com/eCaxBFn.png" tvg-id="KentronTV.am" tvg-chno="#" tvg-country="AM" group-title="Armenia",Kentron TV Ⓢ
+https://gineu9.bozztv.com/gin-36bay2/gin-kentron/tracks-v1a1/mono.m3u8
+#EXTINF:-1 tvg-name="Armenia TV Ⓢ" tvg-logo="https://i.imgur.com/UnoI5uM.png" tvg-id="ArmeniaTV.am" tvg-chno="#" tvg-country="AM" group-title="Armenia",Armenia TV Ⓢ
+https://cdn.hayastantv.com:8088/armenia/tracks-v1a1/mono.m3u8
+#EXTINF:-1 tvg-name="5TV Ⓢ" tvg-logo="https://i.imgur.com/jOGZZDo.png" tvg-id="5TV.am" tvg-chno="#" tvg-country="AM" group-title="Armenia",5TV Ⓢ
+https://cdn.hayastantv.com:8088/5tv/tracks-v1a1/mono.m3u8
+#EXTINF:-1 tvg-name="ABC" tvg-logo="https://i.imgur.com/5CVl5EF.png" tvg-id="ABCTV.au" tvg-chno="1" tvg-country="AU" group-title="Australia",ABC
+https://c.mjh.nz/101002210221/
+#EXTINF:-1 tvg-name="TVSN" tvg-logo="https://i.imgur.com/p3QCBOo.png" tvg-id="TVSSN.au" tvg-chno="5" tvg-country="AU" group-title="Australia",TVSN
+https://tvsn-i.akamaihd.net/hls/live/261837/tvsn/tvsn_750.m3u8
+#EXTINF:-1 tvg-name="ABC Me" tvg-logo="https://i.imgur.com/gBh54wY.png" tvg-id="ABCMe.au" tvg-chno="4" tvg-country="AU" group-title="Australia",ABC Me
+https://c.mjh.nz/101002210224/
+#EXTINF:-1 tvg-name="ABC News" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/d/df/ABC_News_Channel.svg/640px-ABC_News_Channel.svg.png" tvg-id="ABCNews.au" tvg-chno="5" tvg-country="AU" group-title="Australia",ABC News
+https://abc-iview-mediapackagestreams-2.akamaized.net/out/v1/6e1cc6d25ec0480ea099a5399d73bc4b/index.m3u8
+#EXTINF:-1 tvg-name="M4TV" tvg-logo="https://i.imgur.com/HZohlNk.png" tvg-id="M4TV.au" tvg-chno="8" tvg-country="AU" group-title="Australia",M4TV
+https://5a32c05065c79.streamlock.net/live/stream/playlist.m3u8
+#EXTINF:-1 tvg-name="9Go! Ⓖ" tvg-logo="https://i.imgur.com/1CFGu5O.png" tvg-id="9Go.au" tvg-chno="5" tvg-country="AU" group-title="Australia",9Go! Ⓖ
+https://9now-livestreams.akamaized.net/hls/live/2008312/go-syd/master.m3u8
+#EXTINF:-1 tvg-name="9Life Ⓖ" tvg-logo="https://i.imgur.com/ZCUiqlL.png" tvg-id="9Life.au" tvg-chno="5" tvg-country="AU" group-title="Australia",9Life Ⓖ
+https://9now-livestreams.akamaized.net/hls/live/2008313/life-syd/master.m3u8
+#EXTINF:-1 tvg-name="9Rush Ⓖ" tvg-logo="https://upload.wikimedia.org/wikipedia/en/c/c2/Logo_of_9RUSH.png" tvg-id="9Rush.au" tvg-chno="5" tvg-country="AU" group-title="Australia",9Rush Ⓖ
+https://9now-livestreams.akamaized.net/hls/live/2010626/rush-syd/master.m3u8
+#EXTINF:-1 tvg-name="ORF 1 Ⓖ" tvg-logo="https://i.imgur.com/ft2LuRl.jpg" tvg-id="ORF1.at" tvg-chno="1" tvg-country="AT" group-title="Austria",ORF 1 Ⓖ
+https://orf1.mdn.ors.at/out/u/orf1/q8c/manifest.m3u8
+#EXTINF:-1 tvg-name="ORF 2 Ⓖ" tvg-logo="https://i.imgur.com/yPVDaXv.png" tvg-id="ORF2.at" tvg-chno="2" tvg-country="AT" group-title="Austria",ORF 2 Ⓖ
+https://orf2.mdn.ors.at/out/u/orf2/q8c/manifest.m3u8
+#EXTINF:-1 tvg-name="ORF III Ⓖ" tvg-logo="https://i.imgur.com/6BuiUE7.png" tvg-id="ORFIII.at" tvg-chno="3" tvg-country="AT" group-title="Austria",ORF III Ⓖ
+https://orf3.mdn.ors.at/out/u/orf3/q8c/manifest.m3u8
+#EXTINF:-1 tvg-name="Servus TV Ⓖ" tvg-logo="https://i.imgur.com/zDWhSxq.png" tvg-id="ServusTVOsterreich.at" tvg-chno="5" tvg-country="AT" group-title="Austria",Servus TV Ⓖ
+https://rbmn-live.akamaized.net/hls/live/2002825/geoSTVATweb/master.m3u8
+#EXTINF:-1 tvg-name="oe24" tvg-logo="https://i.imgur.com/8UTkcPn.png" tvg-id="Oe24TV.at" tvg-chno="6" tvg-country="AT" group-title="Austria",oe24
+https://varoe24live.sf.apa.at/oe24-live1/oe24.smil/chunklist_b1900000.m3u8
+#EXTINF:-1 tvg-name="W24" tvg-logo="https://i.imgur.com/PGb4wYw.png" tvg-id="W24.at" tvg-chno="7" tvg-country="AT" group-title="Austria",W24
+https://ms01.w24.at/W24/smil:liveevent.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="P3TV" tvg-logo="https://i.imgur.com/1sPhZ57.png" tvg-id="P3tv.at" tvg-chno="8" tvg-country="AT" group-title="Austria",P3TV
+http://p3-6.mov.at:1935/live/weekstream/playlist.m3u8
+#EXTINF:-1 tvg-name="RTV" tvg-logo="https://i.imgur.com/oD7GQxT.png" tvg-id="RTV.at" tvg-chno="9" tvg-country="AT" group-title="Austria",RTV
+http://iptv.rtv-ooe.at/stream.m3u8
+#EXTINF:-1 tvg-name="RTS Ⓖ" tvg-logo="https://i.imgur.com/Bhv7lvy.png" tvg-id="TVTV.at" tvg-chno="10" tvg-country="AT" group-title="Austria",RTS Ⓖ
+https://58b42f6c8c9bf.streamlock.net:8080/live/RTS2015/playlist.m3u8
+#EXTINF:-1 tvg-name="Tirol TV Ⓖ" tvg-logo="https://i.imgur.com/1E7Nflo.jpg" tvg-id="TirolTV.at" tvg-chno="11" tvg-country="AT" group-title="Austria",Tirol TV Ⓖ
+http://lb.hd-livestream.de:1935/live/TirolTV/playlist.m3u8
+#EXTINF:-1 tvg-name="R9" tvg-logo="https://i.imgur.com/2fxVYsL.jpg" tvg-id="R9.at" tvg-chno="12" tvg-country="AT" group-title="Austria",R9
+https://ms01.w24.at/R9/smil:liveeventR9.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="ARB 24" tvg-logo="https://i.imgur.com/mtvIFyq.png" tvg-id="ARB24.az" tvg-country="AZ" group-title="Azerbaijan",ARB 24
+http://85.132.81.184:8080/arb/live/index.m3u8
+#EXTINF:-1 tvg-name="ARB Günəş Ⓢ" tvg-logo="https://i.imgur.com/dSg7KUK.png" tvg-id="ArbGunes.az" tvg-country="AZ" group-title="Azerbaijan",ARB Günəş Ⓢ
+https://www.tvkaista.net/stream-forwarder/get.php?x=ARMGunes
+#EXTINF:-1 tvg-name="ARB Ⓢ" tvg-logo="https://i.imgur.com/E97M2OL.png" tvg-id="ARB.az" tvg-country="AZ" group-title="Azerbaijan",ARB Ⓢ
+http://109.205.166.68/server124/arb/index.m3u8
+#EXTINF:-1 tvg-name="Azad TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/ATV_%282012-h.h.%29.png/474px-ATV_%282012-h.h.%29.png" tvg-id="AzadTV.az" tvg-country="AZ" group-title="Azerbaijan",Azad TV Ⓢ
+https://www.tvkaista.net/stream-forwarder/get.php?x=ATVAz
+#EXTINF:-1 tvg-name="AzStarTV" tvg-logo="https://i.imgur.com/di3XX5L.png" tvg-id="AzStarTV.ca" tvg-country="AZ" group-title="Azerbaijan",AzStarTV
+http://live.azstartv.com/azstar/smil:azstar.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="AZTV Ⓢ" tvg-logo="https://i.imgur.com/snBMMeH.png" tvg-id="AZTV.az" tvg-country="AZ" group-title="Azerbaijan",AZTV Ⓢ
+https://www.tvkaista.net/stream-forwarder/get.php?x=AZTV
+#EXTINF:-1 tvg-name="Baku TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Baku_TV_%282018%29.png/640px-Baku_TV_%282018%29.png" tvg-id="BakuTV.az" tvg-country="AZ" group-title="Azerbaijan",Baku TV
+https://rtmp.baku.tv/live/bakutv_720p.m3u8
+#EXTINF:-1 tvg-name="CBC" tvg-logo="https://i.imgur.com/wVT0dwO.png" tvg-id="CBC.az" tvg-country="AZ" group-title="Azerbaijan",CBC
+https://stream.cbctv.az:5443/LiveApp/streams/cbctv.m3u8
+#EXTINF:-1 tvg-name="Dünya TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/az/5/5d/D%C3%BCnya_TV_%282019-h.h.%29.png" tvg-id="DunyaTV.az" tvg-country="AZ" group-title="Azerbaijan",Dünya TV Ⓢ
+https://www.tvkaista.net/stream-forwarder/get.php?x=Dunya
+#EXTINF:-1 tvg-name="İctimai TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/%C4%B0ctimai_TV_%282021-h.h.%29.svg/470px-%C4%B0ctimai_TV_%282021-h.h.%29.svg.png" tvg-id="IctimaiTV.az" tvg-country="AZ" group-title="Azerbaijan",İctimai TV Ⓢ
+http://109.205.166.68/server124/ictimai_tv/index.m3u8
+#EXTINF:-1 tvg-name="İdman TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/az/thumb/8/88/%C4%B0dman_Az%C9%99rbaycan_TV_loqo_%282019-h.h.%29.png/640px-%C4%B0dman_Az%C9%99rbaycan_TV_loqo_%282019-h.h.%29.png" tvg-id="IdmanTV.az" tvg-country="AZ" group-title="Azerbaijan",İdman TV Ⓢ
+http://109.205.166.68/server124/idman_az/index.m3u8
+#EXTINF:-1 tvg-name="Kanal S" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Kanal_S_%282022%29.png/616px-Kanal_S_%282022%29.png" tvg-id="KanalS.az" tvg-country="AZ" group-title="Azerbaijan",Kanal S
+https://www.tvkaista.net/stream-forwarder/get.php?x=KanalS
+#EXTINF:-1 tvg-name="Mədəniyyət TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/f/fc/M%C9%99d%C9%99niyy%C9%99t_TV_logo.png" tvg-id="MedeniyyetTV.az" tvg-country="AZ" group-title="Azerbaijan",Mədəniyyət TV Ⓢ
+https://str.yodacdn.net/medeniyyet/index.m3u8
+#EXTINF:-1 tvg-name="Real TV" tvg-logo="https://i.imgur.com/e2KFL0R.png" tvg-id="RealTV.az" tvg-country="AZ" group-title="Azerbaijan",Real TV
+https://www.tvkaista.net/stream-forwarder/get.php?x=RealTV
+#EXTINF:-1 tvg-name="Space TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Space_TV_loqosu_%282023-h.h.%29.png/296px-Space_TV_loqosu_%282023-h.h.%29.png" tvg-id="SpaceTV.az" tvg-country="AZ" group-title="Azerbaijan",Space TV Ⓢ
+http://109.205.166.68/server124/space_tv/index.m3u8
+#EXTINF:-1 tvg-name="TMB Azərbaycan" tvg-logo="https://upload.wikimedia.org/wikipedia/az/c/c2/TMB_TV_loqosu.png" tvg-country="AZ" group-title="Azerbaijan",TMB Azərbaycan
+https://www.tvkaista.net/stream-forwarder/get.php?x=TMBAzerbaijan
+#EXTINF:-1 tvg-name="Xəzər TV Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/a/a5/X%C9%99z%C9%99r_TV_%282023%29.png" tvg-id="XezerTV.az" tvg-country="AZ" group-title="Azerbaijan",Xəzər TV Ⓢ
+https://www.tvkaista.net/stream-forwarder/get.php?x=Xezer
+#EXTINF:-1 tvg-name="Səhiyyə TV" tvg-logo="https://upload.wikimedia.org/wikipedia/az/thumb/c/cd/S%C9%99hiyy%C9%99_TV.png/640px-S%C9%99hiyy%C9%99_TV.png" tvg-id="SehiyyeTV.az" tvg-country="AZ" group-title="Azerbaijan",Səhiyyə TV
+https://www.tvkaista.net/stream-forwarder/get.php?x=SehiyyeTV
+#EXTINF:-1 tvg-name="VIP HD" tvg-logo="https://tvtolive.com/wp-content/uploads/VIP-TV-tvtolive.com_.jpg" tvg-country="AZ" group-title="Azerbaijan",VIP HD
+https://www.tvkaista.net/stream-forwarder/get.php?x=AZ_VIP
+#EXTINF:-1 tvg-name="MTV Azerbaijan Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/MTV_Az%C9%99rbaycan_%282022%29.png/622px-MTV_Az%C9%99rbaycan_%282022%29.png" tvg-id="MTVAzerbaijan.az" tvg-country="AZ" group-title="Azerbaijan",MTV Azerbaijan Ⓢ
+https://www.tvkaista.net/stream-forwarder/get.php?x=MTVAzerbaijan
+#EXTINF:-1 tvg-name="Беларусь 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Belarus_1_logo.svg/742px-Belarus_1_logo.svg.png" tvg-id="Belarus1.by" tvg-chno="1" tvg-country="BY" group-title="Belarus",Беларусь 1
+https://ngtrk.dc.beltelecom.by/ngtrk/smil:belarus1.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="Беларусь 2" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Belarus_2_logo.svg/742px-Belarus_2_logo.svg.png" tvg-id="Belarus2.by" tvg-country="BY" group-title="Belarus",Беларусь 2
+https://ngtrk.dc.beltelecom.by/ngtrk/smil:belarus2.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="Беларусь 3" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Belarus_3_logo.svg/742px-Belarus_3_logo.svg.png" tvg-id="Belarus3.by" tvg-country="BY" group-title="Belarus",Беларусь 3
+https://ngtrk.dc.beltelecom.by/ngtrk/smil:belarus3.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="ОНТ Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/%D0%9B%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF_%D1%82%D0%B5%D0%BB%D0%B5%D0%BA%D0%B0%D0%BD%D0%B0%D0%BB%D0%B0_%C2%AB%D0%9E%D0%9D%D0%A2%C2%BB.svg/991px-%D0%9B%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF_%D1%82%D0%B5%D0%BB%D0%B5%D0%BA%D0%B0%D0%BD%D0%B0%D0%BB%D0%B0_%C2%AB%D0%9E%D0%9D%D0%A2%C2%BB.svg.png" tvg-id="ONT.by" tvg-chno="4" tvg-country="BY" group-title="Belarus",ОНТ Ⓢ
+https://stream.dc.beltelecom.by/ont/ont/playlist.m3u8
+#EXTINF:-1 tvg-name="Беларусь 5" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Belarus_5_logo.svg/742px-Belarus_5_logo.svg.png" tvg-id="Belarus5.by" tvg-country="BY" group-title="Belarus",Беларусь 5
+https://ngtrk.dc.beltelecom.by/ngtrk/smil:belarus5.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="СТВ" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/%D0%9B%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF_%D0%B1%D0%B5%D0%BB%D0%BE%D1%85%D1%83%D1%81%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D1%82%D0%B5%D0%BB%D0%B5%D0%BA%D0%B0%D0%BD%D0%B0%D0%BB%D0%B0_%C2%AB%D0%A1%D0%A2%D0%92%C2%BB.svg/640px-%D0%9B%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF_%D0%B1%D0%B5%D0%BB%D0%BE%D1%81%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D1%82%D0%B5%D0%BB%D0%B5%D0%BA%D0%B0%D0%BD%D0%B0%D0%BB%D0%B0_%C2%AB%D0%A1%D0%A2%D0%92%C2%BB.svg.png" tvg-id="STV.by" tvg-chno="5" tvg-country="BY" group-title="Belarus",СТВ
+https://ctv.dc.beltelecom.by/ctv/ctv.stream/playlist.m3u8
+#EXTINF:-1 tvg-name="Беларусь 24" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Belarus_24_logo.svg/742px-Belarus_24_logo.svg.png" tvg-id="Belarus24.by" tvg-country="BY" group-title="Belarus",Беларусь 24
+https://ngtrk.dc.beltelecom.by/ngtrk/smil:belarus24.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="Беларусь 5 Интернет" tvg-logo="https://i.imgur.com/rzPQ9Iz.png" tvg-id="Belarus5Internet.by" tvg-country="BY" group-title="Belarus",Беларусь 5 Интернет
+https://ngtrk.dc.beltelecom.by/ngtrk/smil:belarus5int.smil/playlist.m3u8
+#EXTINF:-1 tvg-name="1Mus" tvg-logo="https://i.imgur.com/PozF9MT.png" tvg-id="FirstMusicChannel.by" tvg-chno="1" tvg-country="BY" group-title="Belarus",1Mus
+http://hz1.teleport.cc/HLS/HD.m3u8
+#EXTINF:-1 tvg-name="8 Kanal Vitebsk Ⓢ" tvg-logo="https://i.imgur.com/tjwBSTF.jpg" tvg-id="8kanal.by" tvg-chno="2" tvg-country="BY" group-title="Belarus",8 Kanal Vitebsk Ⓢ
+http://95.46.208.8:24433/art
+#EXTINF:-1 tvg-name="Belros Ⓢ" tvg-logo="https://i.imgur.com/HWqxjGl.png" tvg-id="BelRos.ru" tvg-chno="3" tvg-country="BY" group-title="Belarus",Belros Ⓢ
+https://live2.mediacdn.ru/sr1/tro/playlist.m3u8
+#EXTINF:-1 tvg-name="Belarus 4 Vitebsk Ⓢ" tvg-logo="https://i.imgur.com/TW6Ap71.png" tvg-id="Belarus4Vitebsk.by" tvg-chno="5" tvg-country="BY" group-title="Belarus",Belarus 4 Vitebsk Ⓢ
+http://95.46.208.8:26258/belarus4
+#EXTINF:-1 tvg-name="Hawe TV Vitebsk Ⓢ" tvg-logo="https://i.imgur.com/HOb5m5f.jpg" tvg-id="NasheTV.by" tvg-chno="7" tvg-country="BY" group-title="Belarus",Hawe TV Vitebsk Ⓢ
+http://95.46.208.8:26259/nashe
+#EXTINF:-1 tvg-name="Pervyy Muzykal'nyy BY Ⓢ" tvg-logo="https://i.imgur.com/7tFiG6S.jpg" tvg-id="FirstMusicChannel.by" tvg-chno="9" tvg-country="BY" group-title="Belarus",Pervyy Muzykal'nyy BY Ⓢ
+http://rtmp.one.by:1200
+#EXTINF:-1 tvg-name="Planeta RTR Ⓢ" tvg-logo="https://i.imgur.com/yqRuEJd.png" tvg-id="RTRBelarus.by" tvg-chno="10" tvg-country="BY" group-title="Belarus",Planeta RTR Ⓢ
+https://a3569455801-s26881.cdn.ngenix.net/live/smil:rtrp.smil/chunklist_b1600000.m3u8
+#EXTINF:-1 tvg-name="Radio HIT Orsk" tvg-logo="https://i.imgur.com/e2RyN4r.jpg" tvg-id="RadioHit.ru" tvg-chno="11" tvg-country="BY" group-title="Belarus",Radio HIT Orsk
+http://hithd.camsh.orsk.ru/hls/hithd.m3u8
+#EXTINF:-1 tvg-name="RTL-Be" tvg-logo="https://i.imgur.com/xMhSvax.png" tvg-id="BelRTL.be" tvg-chno="1" tvg-country="BE" group-title="Belgium",RTL-Be
+https://rtltvi-lh.akamaihd.net/i/TVI_1@319659/master.m3u8
+#EXTINF:-1 tvg-name="La Une" tvg-logo="https://i.imgur.com/hJodwJt.png" tvg-id="LaUne.be" tvg-chno="2" tvg-country="BE" group-title="Belgium",La Une
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/29797c9f3f4fa00.m3u8
+#EXTINF:-1 tvg-name="Tipik" tvg-logo="https://i.imgur.com/PVbVj8o.png" tvg-id="Tipik.be" tvg-chno="3" tvg-country="BE" group-title="Belgium",Tipik
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/5dee2de1f4661ce.m3u8
+#EXTINF:-1 tvg-name="Club RTL" tvg-logo="https://i.imgur.com/e9GkFwY.png" tvg-id="ClubRTL.be" tvg-chno="4" tvg-country="BE" group-title="Belgium",Club RTL
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/9ef55f75bc15308.ts
+#EXTINF:-1 tvg-name="La Trois" tvg-logo="https://i.imgur.com/kC3pJtA.png" tvg-id="LaTrois.be" tvg-chno="6" tvg-country="BE" group-title="Belgium",La Trois
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/6f940c7da9a562e.ts
+#EXTINF:-1 tvg-name="Plug RTL" tvg-logo="https://i.imgur.com/iAZZWkZ.png" tvg-id="PlugRTL.be" tvg-chno="9" tvg-country="BE" group-title="Belgium",Plug RTL
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/de5c6896d356f8e.ts
+#EXTINF:-1 tvg-name="LN24" tvg-logo="https://i.imgur.com/hePpxnn.png" tvg-id="LN24.be" tvg-chno="12" tvg-country="BE" group-title="Belgium",LN24
+https://live.cdn.ln24.be/out/v1/b191621c8b9a436cad37bb36a82d2e1c/index.m3u8
+#EXTINF:-1 tvg-name="BX1" tvg-logo="https://i.imgur.com/YjKqWru.png" tvg-id="BX1.be" tvg-chno="13" tvg-country="BE" group-title="Belgium",BX1
+https://59959724487e3.streamlock.net/stream/live/playlist.m3u8
+#EXTINF:-1 tvg-name="EEN" tvg-logo="https://i.imgur.com/66GQlc7.png" tvg-id="Een.be" tvg-chno="1" tvg-country="BE" group-title="Belgium",EEN
+https://live-vrt.rabah.net/groupc/live/8edf3bdf-7db3-41c3-a318-72cb7f82de66/live_aes.isml/playlist.m3u8
+#EXTINF:-1 tvg-name="Canvas" tvg-logo="https://i.imgur.com/GQkhACx.png" tvg-id="Canvas.be" tvg-chno="2" tvg-country="BE" group-title="Belgium",Canvas
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/09916e3a88db175.ts
+#EXTINF:-1 tvg-name="VTM" tvg-logo="https://i.imgur.com/fUxRP9x.png" tvg-id="VTM.be" tvg-chno="3" tvg-country="BE" group-title="Belgium",VTM
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/c5cafdbfc4d28d3.ts
+#EXTINF:-1 tvg-name="VIER" tvg-logo="https://i.imgur.com/bFTXP2e.png" tvg-chno="5" tvg-country="BE" group-title="Belgium",VIER
+http://4ce5e2d62ee2c10e43c709f9b87c44d5.streamhost.cc/m3u8/Belgium/3f1f349cb9cf765.ts
+#EXTINF:-1 tvg-name="BHT 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/9/93/Logo_of_BHT_1_%282003-2012%29.png" tvg-id="BHT1.ba" tvg-chno="1" tvg-country="BA" group-title="Bosnia and Herzegovina",BHT 1
+https://bhrtstream.bhtelecom.ba/bhrtportal_hd.m3u8
+#EXTINF:-1 tvg-name="Federalna televizija (FTV) Ⓢ" tvg-logo="https://i.imgur.com/Jpvs4u3.png" tvg-id="FederalnaTV.ba" tvg-chno="2" tvg-country="BA" group-title="Bosnia and Herzegovina",Federalna televizija (FTV) Ⓢ
+http://94.250.2.6:7374/play/a02s/index.m3u8
+#EXTINF:-1 tvg-name="Televizija Republike Srpske (RTRS)" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/RTRS_Logo.svg/640px-RTRS_Logo.svg.png" tvg-id="RTRSTV.ba" tvg-chno="3" tvg-country="BA" group-title="Bosnia and Herzegovina",Televizija Republike Srpske (RTRS)
+https://parh.rtrs.tv/tv/live/playlist.m3u8
+#EXTINF:-1 tvg-name="RTRS PLUS Ⓢ" tvg-logo="https://i.imgur.com/k06WvYl.png" tvg-id="RTRSplus.ba" tvg-chno="3" tvg-country="BA" group-title="Bosnia and Herzegovina",RTRS PLUS Ⓢ
+https://pluslive.rtrs.tv/plus/plus/playlist.m3u8
+#EXTINF:-1 tvg-name="N1 Bosna i Hercegovina" tvg-logo="https://i.imgur.com/72oMSWz.png" tvg-id="N1BosniaHerzegovina.ba" tvg-chno="4" tvg-country="BA" group-title="Bosnia and Herzegovina",N1 Bosna i Hercegovina
+https://best-str.umn.cdn.united.cloud/stream?channel=n1bos&p=n1Sh4redSecre7iNf0&sp=n1info&stream=sp1400&u=n1info
+#EXTINF:-1 tvg-name="RTV HB Ⓢ" tvg-logo="https://upload.wikimedia.org/wikipedia/en/6/60/Logo_of_TV_Herceg-Bosne.png" tvg-id="RTVHB.ba" tvg-chno="5" tvg-country="BA" group-title="Bosnia and Herzegovina",RTV HB Ⓢ
+https://prd-hometv-live-open.spectar.tv/ERO_1_083/playlist.m3u8
+#EXTINF:-1 tvg-name="RTV BN Ⓢ" tvg-logo="https://i.imgur.com/DUBvfWb.png" tvg-id="BNTV.ba" tvg-chno="6" tvg-country="BA" group-title="Bosnia and Herzegovina",RTV BN Ⓢ
+https://stream.rtvbn.tv:8080/live/index.m3u8
+#EXTINF:-1 tvg-name="RTV Glas Drine" tvg-logo="https://i.imgur.com/9NgxOdb.png" tvg-id="RTVGlasDrine.ba" tvg-chno="7" tvg-country="BA" group-title="Bosnia and Herzegovina",RTV Glas Drine
+http://glasdrine.cutuk.net:8081/433ssdsw/GlasDrineSD/playlist.m3u8
+#EXTINF:-1 tvg-name="Sevdah Ⓢ" tvg-logo="https://i.imgur.com/V6W3yEp.png" tvg-id="SevdahTV.ba" tvg-chno="8" tvg-country="BA" group-title="Bosnia and Herzegovina",Sevdah Ⓢ
+https://restreamer2.tnt.ba/hls/stream.m3u8
+#EXTINF:-1 tvg-name="TNT Kids" tvg-logo="https://i.imgur.com/irTDbpn.png" tvg-id="TNTKidsTV.ba" tvg-chno="9" tvg-country="BA" group-title="Bosnia and Herzegovina",TNT Kids
+https://restreamer1.tnt.ba/hls/tntkids.m3u8
+#EXTINF:-1 tvg-name="Televizija 5" tvg-logo="https://i.imgur.com/znpvJys.png" tvg-id="Televizija5.ba" tvg-chno="10" tvg-country="BA" group-title="Bosnia and Herzegovina",Televizija 5
+https://balkanmedia.dynu.net/hls/tv5web.m3u8
+#EXTINF:-1 tvg-name="Kanal 6" tvg-logo="https://i.imgur.com/GGhvR0l.png" tvg-id="Kanal6.ba" tvg-chno="11" tvg-country="BA" group-title="Bosnia and Herzegovina",Kanal 6
+https://restreamer1.tnt.ba/hls/kanal6.m3u8
+#EXTINF:-1 tvg-name="SuperTV" tvg-logo="https://i.imgur.com/XYWgd3E.png" tvg-id="SuperTV.ba" tvg-chno="12" tvg-country="BA" group-title="Bosnia and Herzegovina",SuperTV
+https://mirtv.club/live/mirtv/index.m3u8
+#EXTINF:-1 tvg-name="Neon TV" tvg-logo="https://i.imgur.com/thC9NFp.png" tvg-id="ntv.ba" tvg-chno="13" tvg-country="BA" group-title="Bosnia and Herzegovina",Neon TV
+rtsp://185.50.56.16:554/neontelvizija
+#EXTINF:-1 tvg-name="RTV ZE Ⓢ" tvg-logo="https://i.imgur.com/TKUaflB.png" tvg-id="RTVZenica.ba" tvg-chno="4" tvg-country="BA" group-title="Bosnia and Herzegovina",RTV ZE Ⓢ
+https://stream.rtvze.ba/live/123/123.m3u8
+`;
+
+        // 3. Script to process data
+        function parseM3U(data) {
+            const lines = data.split('\n');
+            const channels = [];
+            let currentChannel = {};
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const nameMatch = line.match(/tvg-name="([^"]+)"/);
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    const titleMatch = line.split(',')[1];
+                    
+                    currentChannel = {
+                        name: nameMatch ? nameMatch[1] : titleMatch || "Unknown",
+                        logo: logoMatch ? logoMatch[1] : "https://via.placeholder.com/45/111111/FFFFFF?text=TV"
+                    };
+                } else if (line.startsWith('http')) {
+                    currentChannel.url = line;
+                    channels.push(currentChannel);
+                    currentChannel = {};
+                }
+            }
+            return channels;
+        }
+
+        const m3uChannels = parseM3U(rawM3uData);
+        const allChannels = [...iptvData.channels, ...m3uChannels];
+        const channelList = document.getElementById('channel-list');
+        const videoPlayer = document.getElementById('video-player');
+        const channelTitle = document.getElementById('channel-title');
+
+        document.getElementById('total-channels').innerText = `Total Channels: ${allChannels.length} (50 Sports)`;
+
+        let hls;
+
+        function loadChannel(url, name, listItem) {
+            channelTitle.innerText = name;
+
+            document.querySelectorAll('.channel-list li').forEach(li => li.classList.remove('active'));
+            if(listItem) listItem.classList.add('active');
+
+            // Close sidebar automatically on mobile
+            if(window.innerWidth <= 992) {
+                document.getElementById('sidebar').classList.remove('active');
+            }
+
+            if (Hls.isSupported()) {
+                if(hls) hls.destroy();
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    videoPlayer.play().catch(() => console.log('Auto-play prevented'));
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayer.src = url;
+                videoPlayer.addEventListener('loadedmetadata', function() {
+                    videoPlayer.play().catch(() => console.log('Auto-play prevented'));
+                });
+            }
+        }
+
+        function renderChannels(channels) {
+            channelList.innerHTML = '';
+            channels.forEach(channel => {
+                const li = document.createElement('li');
+                
+                const logoImg = document.createElement('img');
+                logoImg.src = channel.logo || "https://via.placeholder.com/45/111111/FFFFFF?text=TV";
+                logoImg.className = 'channel-logo';
+                logoImg.onerror = function() { this.src = 'https://via.placeholder.com/45/111111/FFFFFF?text=TV'; };
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'channel-info';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'channel-name';
+                nameSpan.innerText = channel.name;
+
+                const playingSpan = document.createElement('span');
+                playingSpan.className = 'playing-status';
+                playingSpan.innerText = '● NOW PLAYING';
+
+                infoDiv.appendChild(nameSpan);
+                infoDiv.appendChild(playingSpan);
+                
+                li.appendChild(logoImg);
+                li.appendChild(infoDiv);
+
+                li.onclick = () => loadChannel(channel.url, channel.name, li);
+                channelList.appendChild(li);
+            });
+        }
+
+        function filterChannels() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allChannels.filter(c => c.name.toLowerCase().includes(query));
+            renderChannels(filtered);
+        }
+
+        // Render initial channels
+        renderChannels(allChannels);
+
+        // Auto-load first channel
+        if(allChannels.length > 0) {
+            loadChannel(allChannels[0].url, allChannels[0].name, channelList.firstChild);
+        }
+
+    </script>
+</body>
+</html>
